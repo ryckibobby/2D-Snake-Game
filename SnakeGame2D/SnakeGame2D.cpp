@@ -3,6 +3,7 @@
 #include <iostream>
 #include <conio.h>
 #include <windows.h>
+#include <fstream>
 
 
 
@@ -22,8 +23,27 @@ int nTail;
 enum eDirection {STOP = 0, LEFT, RIGHT, UP, DOWN};
 eDirection dir;
 
+//to store high score
+int highScore = 0;
+
 //game over 
 bool gameOver;
+
+void LoadHighScore() {
+	std::ifstream file("highscore.txt");
+	if (file.is_open()) {
+		file >> highScore;
+	}
+	file.close();
+}
+
+void SaveHighScore() {
+	std::ofstream file("highscore.txt");
+	if (file.is_open()) {
+		file << highScore;
+	}
+	file.close();
+}
 
 void Setup() {
 	gameOver = false; 
@@ -33,6 +53,8 @@ void Setup() {
 	fruitX = rand() % width;
 	fruitY = rand() % height;
 	score = 0;
+
+	LoadHighScore();
 }
 
 void Draw() {
@@ -75,6 +97,7 @@ void Draw() {
 
 	//display score
 	std::cout << "Score: " << score << std::endl;
+	std::cout << "High Score: " << highScore << std::endl;
 }
 
 //user input
@@ -151,8 +174,14 @@ void Logic() {
 		fruitX = rand() % width;
 		fruitY = rand() % height;
 		nTail++;
+
+		if (score > highScore) {
+			highScore = score;
+			SaveHighScore();
+		}
 	}
 }
+
 
 
 int main()
