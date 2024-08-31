@@ -35,8 +35,72 @@ void Setup() {
 	score = 0;
 }
 
+void Draw() {
+	system("cls");
+
+	for (int i = 0; i < width + 2; i++)
+		std::cout << "#";
+	std::cout << std::endl;
+
+	//draw game area
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			if (j == 0)
+				std::cout << "#"; //left wall
+			if (i == y && j == x)
+				std::cout << "0"; //snake head
+			else if (i == fruitY && j == fruitX)
+				std::cout << "F";
+			else {
+				bool print = false;
+				for (int k = 0; k < nTail; k++) {
+					if (tailX[k] == j && tailY[k] == i) {
+						std::cout << "o"; //snake tail
+						print = true;
+					}
+				}
+				if (!print)
+					std::cout << " ";
+			}
+			if (j == width - 1)
+				std::cout << "#";
+		}
+		std::cout << std::endl;
+	}
+
+	//draw bottom wall
+	for (int i = 0; i < width + 2; i++)
+		std::cout << "#";
+	std::cout << std::endl;
+
+	//display score
+	std::cout << "Score: " << score << std::endl;
+}
+
+//user input
+void Input() {
+	if (_kbhit()) {
+		switch (_getch()) {
+		case 'a' :
+			dir = LEFT;
+			break;
+		case 'd' :
+			dir = RIGHT;
+			break;
+		case 'w' :
+			dir = UP;
+			break;
+		case 's' :
+			dir = DOWN;
+			break;
+		case 'x' :
+			gameOver = true;
+			break;
+		}
+	}
+}
 int main()
 {
-
+	Setup();
 }
 
