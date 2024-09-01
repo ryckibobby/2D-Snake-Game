@@ -53,6 +53,9 @@ int highScore = 0;
 //game over 
 bool gameOver;
 
+bool isPaused = false;  // tracks if the game is currently paused
+
+
 int gameSpeed = 100; // default game speed
 
 void LoadHighScore() {
@@ -275,6 +278,9 @@ void Input() {
 		case 'x' :
 			gameOver = true;
 			break;
+		case 'p':
+			isPaused = !isPaused;  // toggle pause state
+			break;
 		}
 	}
 }
@@ -434,21 +440,27 @@ void Logic() {
 int main()
 {
 	while (true) {
-		ShowMenu();  // Display the menu and handle selection
+		ShowMenu();  // display the menu and handle selection
 
 		Setup();
 		while (!gameOver) {
-			Draw();
-			Input();
-			Logic();
-			Sleep(gameSpeed);  // Adjust speed based on difficulty
+			if (!isPaused) {
+				Draw();
+				Input();
+				Logic();
+				Sleep(gameSpeed);  // Adjust speed based on difficulty
+			}
+			else {
+				std::cout << "Game Paused. Press 'P' to resume..." << std::endl;
+				Input();  // still listen for the 'P' key to unpause
+				Sleep(100);  // reduce CPU usage while paused
+			}
+			Sleep(gameSpeed);  // adjust speed based on difficulty
 		}
-
 		std::cout << "Game Over! Press any key to return to the main menu...";
 		std::cin.ignore();
 		std::cin.get();
 	}
-
 	return 0;
 }
 
