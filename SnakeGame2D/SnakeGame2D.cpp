@@ -30,7 +30,8 @@ int survivalTicks = 0;
 int fruitsCollected = 0; 
 
 //variable for snake and food position
-int x, y, fruitX, fruitY, score;
+int x, y, aiX, aiY;
+int fruitX, fruitY, score, aiScore;
 
 //special fruit variables
 int specialFruitX, specialFruitY;
@@ -38,14 +39,14 @@ int specialFruitTimer = 0;
 bool specialFruitActive = false;
 const int specialFruitDuration = 50;
 
-//track snake's tail
-int tailX[100], tailY[100];
-int nTail;
+//track snake and ai snake's tail
+int tailX[100], tailY[100], aiTailX[100], aiTailY[100];
+int nTail, aiNTail;
 
 
 //direction control
 enum eDirection {STOP = 0, LEFT, RIGHT, UP, DOWN};
-eDirection dir;
+eDirection dir, aiDir;
 
 //to store high score
 int highScore = 0;
@@ -178,11 +179,18 @@ void ShowMenu() {
 void Setup() {
 	gameOver = false; 
 	dir = STOP;
+	aiDir = STOP;
 	x = width / 2;
 	y = height / 2;
+	aiX = width / 3;
+	aiY = height / 3; 
 	fruitX = rand() % width;
 	fruitY = rand() % height;
 	score = 0;
+	aiScore = 0;
+
+	nTail = 0;
+	aiNTail = 0;
 
 	specialFruitTimer = 0;
 	specialFruitActive = false;
@@ -195,6 +203,73 @@ void Setup() {
 	consecutiveFruits = 0;
 	totalTilesCovered = 0;
 	memset(tilesCovered, false, sizeof(tilesCovered));
+}
+
+// AI movement logic
+void AILogic() {
+	if (aiX < fruitX) {
+		aiDir = RIGHT;
+	}
+	else if (aiX > fruitX) {
+		aiDir = LEFT;
+	}
+	else if (aiY < fruitY) {
+		aiDir = DOWN;
+	}
+	else if (aiY > fruitY) {
+		aiDir = UP;
+	}
+
+	//move AI snake
+	int prevX = aiTailX[0];
+	int prevY = aiTailY[0];
+	int prev2X, prev2Y;
+	aiTailX[0] = aiX;
+	aiTailY[0] = aiY;
+	for (int i = 1; i < aiNTail; i++) {
+		prev2X = aiTailX[i];
+		prev2Y = aiTailY[i];
+		aiTailX[i] = prevX;
+		aiTailY[i] = prevY;
+		prevX = prev2X;
+		prevY = prev2Y;
+	}
+
+	switch (aiDir) {
+	case LEFT:
+		aiX--;
+		break;
+	case RIGHT:
+		aiX++;
+		break;
+	case UP:
+		aiY--;
+		break;
+	case DOWN:
+		aiY++;
+		break;
+	default:
+		break;
+	}
+
+	//check if AI hits the wall
+	if (aiX >= width) aiX = 0; else if (aiX < 0) aiX = width - 1;
+	if (aiY >= height) aiY = 0; else if (aiY < 0) aiY = height - 1;
+
+	//check if AI hits itself
+	for (int i = 0; i < aiNTail; i++) {
+		if (aiTailX[i] == aiX && aiTailY[i] == aiY) {
+			gameOver = true;
+		}
+	}
+
+	//check if AI eats the fruit
+	if (aiX == fruitX && aiY == fruitY) {
+		aiScore += 10;
+		fruitX = rand() % width;
+		fruitY = rand() % height;
+		aiNTail++;
+	}
 }
 
 void Draw() {
@@ -211,6 +286,8 @@ void Draw() {
 				std::cout << "#"; //left wall
 			if (i == y && j == x)
 				std::cout << "0"; //snake head
+			else if (i == aiY && j == aiX)
+				std::cout << "A"; //AI snake head
 			else if (i == fruitY && j == fruitX)
 				std::cout << "F";
 			else if (specialFruitActive && i == specialFruitY && j == specialFruitX)
@@ -220,6 +297,12 @@ void Draw() {
 				for (int k = 0; k < nTail; k++) {
 					if (tailX[k] == j && tailY[k] == i) {
 						std::cout << "o"; //snake tail
+						print = true;
+					}
+				}
+				for (int k = 0; k < aiNTail; k++) {
+					if (aiTailX[k] == j && aiTailY[k] == i) {
+						std::cout << "a"; //AI snake tail
 						print = true;
 					}
 				}
@@ -239,6 +322,7 @@ void Draw() {
 
 	//display score
 	std::cout << "Score: " << score << std::endl;
+	std::cout << "AI Score: " << aiScore << std::endl;
 	std::cout << "High Score: " << highScore << std::endl;
 
 	if (scoreHunterUnlocked)
@@ -342,6 +426,10 @@ void Logic() {
 			SaveHighScore();
 		}
 	}
+
+	AILogic();
+
+
 	if (!specialFruitActive && rand() % 100 < 5) {  // 5% chance to spawn special fruit each cycle
 		specialFruitX = rand() % width;
 		specialFruitY = rand() % height;
