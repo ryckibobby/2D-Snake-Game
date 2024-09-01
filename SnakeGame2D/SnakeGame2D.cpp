@@ -42,6 +42,7 @@ const int specialFruitDuration = 50;
 //track snake and ai snake's tail
 int tailX[100], tailY[100], aiTailX[100], aiTailY[100];
 int nTail, aiNTail;
+int aiSpeed = 150;
 
 
 //direction control
@@ -73,6 +74,36 @@ void SaveHighScore() {
 		file << highScore;
 	}
 	file.close();
+}
+
+void SelectAIDifficulty() {
+	int difficulty;
+	std::cout << "Select AI Difficulty: " << std::endl;
+	std::cout << "1. Easy" << std::endl;
+	std::cout << "2. Medium" << std::endl;
+	std::cout << "3. Hard" << std::endl;
+	std::cout << "Enter your choice: ";
+	std::cin >> difficulty;
+
+	switch (difficulty) {
+	case 1:
+		aiSpeed = 150;  //slower AI speed
+		break;
+	case 2:
+		aiSpeed = 100;  //default AI speed
+		break;
+	case 3:
+		aiSpeed = 50;   //faster AI speed
+		break;
+	default:
+		std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
+		aiSpeed = 100;
+		break;
+	}
+	std::cout << "AI Difficulty set!" << std::endl;
+	std::cout << "\nPress any key to return to the menu...";
+	std::cin.ignore();
+	std::cin.get();
 }
 
 void ChangeDifficulty() {
@@ -527,6 +558,7 @@ void Logic() {
 
 int main()
 {
+	SelectAIDifficulty();
 	while (true) {
 		ShowMenu();  // display the menu and handle selection
 
@@ -536,6 +568,7 @@ int main()
 				Draw();
 				Input();
 				Logic();
+				AILogic();
 				Sleep(gameSpeed);  // Adjust speed based on difficulty
 			}
 			else {
