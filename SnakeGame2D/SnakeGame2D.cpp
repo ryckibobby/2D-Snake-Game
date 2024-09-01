@@ -53,6 +53,8 @@ int highScore = 0;
 //game over 
 bool gameOver;
 
+int gameSpeed = 100; // default game speed
+
 void LoadHighScore() {
 	std::ifstream file("highscore.txt");
 	if (file.is_open()) {
@@ -68,6 +70,107 @@ void SaveHighScore() {
 	}
 	file.close();
 }
+
+void ChangeDifficulty() {
+	int difficulty;
+	std::cout << "Select Difficulty: " << std::endl;
+	std::cout << "1. Easy" << std::endl;
+	std::cout << "2. Medium" << std::endl;
+	std::cout << "3. Hard" << std::endl;
+	std::cout << "Enter your choice: ";
+	std::cin >> difficulty;
+
+	switch (difficulty) {
+	case 1:
+		gameSpeed = 150;  // Slower speed
+		break;
+	case 2:
+		gameSpeed = 100;  // Default speed
+		break;
+	case 3:
+		gameSpeed = 50;   // Faster speed
+		break;
+	default:
+		std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
+		gameSpeed = 100;
+		break;
+	}
+	std::cout << "Difficulty set!" << std::endl;
+	std::cout << "\nPress any key to return to the menu...";
+	std::cin.ignore();
+	std::cin.get();
+}
+
+void ShowHighScores() {
+	system("cls");
+	std::cout << "=== High Scores ===" << std::endl;
+	std::cout << "1. " << highScore << std::endl;
+	// add more high scores if needed
+	std::cout << "\nPress any key to return to the menu...";
+	std::cin.ignore();
+	std::cin.get();
+}
+
+void ShowSettings() {
+	int settingChoice;
+	do {
+		system("cls");
+		std::cout << "=== Settings ===" << std::endl;
+		std::cout << "1. Change Difficulty" << std::endl;
+		std::cout << "2. Back to Main Menu" << std::endl;
+		std::cout << "Enter your choice: ";
+		std::cin >> settingChoice;
+
+		switch (settingChoice) {
+		case 1:
+			// change difficulty (e.g., adjust speed)
+			ChangeDifficulty();
+			break;
+		case 2:
+			// return to main menu
+			return;
+		default:
+			std::cout << "Invalid choice! Please select again." << std::endl;
+			break;
+		}
+	} while (settingChoice != 2);
+}
+
+void ShowMenu() {
+	int choice;
+	do {
+		system("cls");
+		std::cout << "=== Snake Game ===" << std::endl;
+		std::cout << "1. Start Game" << std::endl;
+		std::cout << "2. View High Scores" << std::endl;
+		std::cout << "3. Settings" << std::endl;
+		std::cout << "4. Exit" << std::endl;
+		std::cout << "Enter your choice: ";
+		std::cin >> choice;
+
+		switch (choice) {
+		case 1:
+			//start the game
+			return;
+		case 2:
+			//view high scores
+			ShowHighScores();
+			break;
+		case 3:
+			//adjust settings
+			ShowSettings();
+			break;
+		case 4:
+			//exit the game
+			exit(0);
+		default:
+			std::cout << "Invalid choice! Please select again." << std::endl;
+			break;
+		}
+	} while (choice != 1);
+}
+
+
 
 void Setup() {
 	gameOver = false; 
@@ -330,13 +433,22 @@ void Logic() {
 
 int main()
 {
-	Setup();
-	while (!gameOver) {
-		Draw();
-		Input();
-		Logic();
-		Sleep(100);
+	while (true) {
+		ShowMenu();  // Display the menu and handle selection
+
+		Setup();
+		while (!gameOver) {
+			Draw();
+			Input();
+			Logic();
+			Sleep(gameSpeed);  // Adjust speed based on difficulty
+		}
+
+		std::cout << "Game Over! Press any key to return to the main menu...";
+		std::cin.ignore();
+		std::cin.get();
 	}
+
 	return 0;
 }
 
