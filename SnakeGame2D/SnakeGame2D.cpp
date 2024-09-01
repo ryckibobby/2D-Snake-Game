@@ -11,6 +11,24 @@
 const int width = 20;
 const int height = 17;
 
+//achievements variables
+bool scoreHunterUnlocked = false;
+bool survivorUnlocked = false;
+bool fruitCollectorUnlocked = false;
+
+bool speedDemonUnlocked = false;
+bool perfectionistUnlocked = false;
+bool explorerUnlocked = false;
+bool longevityUnlocked = false;
+bool highRollerUnlocked = false;
+
+int consecutiveFruits = 0;  //tracks the number of consecutive fruits collected
+int totalTilesCovered = 0;  //tracks the number of unique tiles covered
+bool tilesCovered[20][20];  //array to track which tiles have been covered
+
+int survivalTicks = 0;
+int fruitsCollected = 0; 
+
 //variable for snake and food position
 int x, y, fruitX, fruitY, score;
 
@@ -64,6 +82,13 @@ void Setup() {
 	specialFruitActive = false;
 
 	LoadHighScore();
+
+	//reset achievement tracking variables
+	survivalTicks = 0;
+	fruitsCollected = 0;
+	consecutiveFruits = 0;
+	totalTilesCovered = 0;
+	memset(tilesCovered, false, sizeof(tilesCovered));
 }
 
 void Draw() {
@@ -109,6 +134,23 @@ void Draw() {
 	//display score
 	std::cout << "Score: " << score << std::endl;
 	std::cout << "High Score: " << highScore << std::endl;
+
+	if (scoreHunterUnlocked)
+		std::cout << "Achievement: Score Hunter" << std::endl;
+	if (survivorUnlocked)
+		std::cout << "Achievement: Survivor" << std::endl;
+	if (fruitCollectorUnlocked)
+		std::cout << "Achievement: Fruit Collector" << std::endl;
+	if (speedDemonUnlocked)
+		std::cout << "Achievement: Speed Demon" << std::endl;
+	if (perfectionistUnlocked)
+		std::cout << "Achievement: Perfectionist" << std::endl;
+	if (explorerUnlocked)
+		std::cout << "Achievement: Explorer" << std::endl;
+	if (longevityUnlocked)
+		std::cout << "Achievement: Longevity" << std::endl;
+	if (highRollerUnlocked)
+		std::cout << "Achievement: High Roller" << std::endl;
 }
 
 //user input
@@ -205,7 +247,7 @@ void Logic() {
 		}
 
 		if (x == specialFruitX && y == specialFruitY) {
-			score += 50;  // increase score by 50 for special fruit
+			score += 30;  // increase score by 30 for special fruit
 			specialFruitActive = false;  // despawn after eating
 			if (score > highScore) {
 				highScore = score;
@@ -213,7 +255,77 @@ void Logic() {
 			}
 		}
 	}
+	survivalTicks++;  // increment survival time
 
+	//track tile coverage for explorer achievement
+	if (!tilesCovered[x][y]) {
+		tilesCovered[x][y] = true;
+		totalTilesCovered++;
+	}
+
+	//achievement: Score Hunter
+	if (!scoreHunterUnlocked && score >= 100) {
+		scoreHunterUnlocked = true;
+		std::cout << "Achievement Unlocked: Score Hunter (Reach 100 points)" << std::endl;
+	}
+
+	//achievement: Survivor
+	if (!survivorUnlocked && survivalTicks >= 200) {
+		survivorUnlocked = true;
+		std::cout << "Achievement Unlocked: Survivor (Survive for 200 ticks)" << std::endl;
+	}
+
+	//achievement: High Roller
+	if (!highRollerUnlocked && score >= 200) {
+		highRollerUnlocked = true;
+		std::cout << "Achievement Unlocked: High Roller (Reach 200 points)" << std::endl;
+	}
+
+	//achievement: Longevity
+	if (!longevityUnlocked && survivalTicks >= 500) {
+		longevityUnlocked = true;
+		std::cout << "Achievement Unlocked: Longevity (Survive for 500 ticks)" << std::endl;
+	}
+
+	//achievement: Explorer
+	if (!explorerUnlocked && totalTilesCovered >= width * height) {
+		explorerUnlocked = true;
+		std::cout << "Achievement Unlocked: Explorer (Cover every tile on the board)" << std::endl;
+	}
+
+	if (x == fruitX && y == fruitY) {
+		score += 10;
+		fruitX = rand() % width;
+		fruitY = rand() % height;
+		nTail++;
+		fruitsCollected++;  // increment the number of fruits collected
+
+		//achievement: Fruit Collector
+		if (!fruitCollectorUnlocked && fruitsCollected >= 10) {
+			fruitCollectorUnlocked = true;
+			std::cout << "Achievement Unlocked: Fruit Collector (Collect 10 fruits without dying)" << std::endl;
+		}
+
+		//achievement: Perfectionist
+		if (!perfectionistUnlocked && consecutiveFruits >= 5) {
+			perfectionistUnlocked = true;
+			std::cout << "Achievement Unlocked: Perfectionist (Collect 5 consecutive fruits without missing)" << std::endl;
+		}
+
+		//achievement: Speed Demon
+		if (!speedDemonUnlocked && nTail >= 15 && survivalTicks >= 100) {
+			speedDemonUnlocked = true;
+			std::cout << "Achievement Unlocked: Speed Demon (Survive for 100 ticks with a length of 15 or more)" << std::endl;
+		}
+
+		if (score > highScore) {
+			highScore = score;
+			SaveHighScore();
+		}
+	}
+	else {
+		consecutiveFruits = 0;  //reset the consecutive fruit counter if a fruit is missed
+	}
 }
 
 int main()
