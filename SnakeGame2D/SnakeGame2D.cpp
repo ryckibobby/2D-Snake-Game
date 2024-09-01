@@ -14,6 +14,12 @@ const int height = 17;
 //variable for snake and food position
 int x, y, fruitX, fruitY, score;
 
+//special fruit variables
+int specialFruitX, specialFruitY;
+int specialFruitTimer = 0;
+bool specialFruitActive = false;
+const int specialFruitDuration = 50;
+
 //track snake's tail
 int tailX[100], tailY[100];
 int nTail;
@@ -54,6 +60,9 @@ void Setup() {
 	fruitY = rand() % height;
 	score = 0;
 
+	specialFruitTimer = 0;
+	specialFruitActive = false;
+
 	LoadHighScore();
 }
 
@@ -73,6 +82,8 @@ void Draw() {
 				std::cout << "0"; //snake head
 			else if (i == fruitY && j == fruitX)
 				std::cout << "F";
+			else if (specialFruitActive && i == specialFruitY && j == specialFruitX)
+				std::cout << "S";  // special fruit 
 			else {
 				bool print = false;
 				for (int k = 0; k < nTail; k++) {
@@ -180,9 +191,30 @@ void Logic() {
 			SaveHighScore();
 		}
 	}
+	if (!specialFruitActive && rand() % 100 < 5) {  // 5% chance to spawn special fruit each cycle
+		specialFruitX = rand() % width;
+		specialFruitY = rand() % height;
+		specialFruitActive = true;
+		specialFruitTimer = specialFruitDuration;
+	}
+
+	if (specialFruitActive) {
+		specialFruitTimer--;  // decrease the timer
+		if (specialFruitTimer <= 0) {
+			specialFruitActive = false;  // despawn the special fruit
+		}
+
+		if (x == specialFruitX && y == specialFruitY) {
+			score += 50;  // increase score by 50 for special fruit
+			specialFruitActive = false;  // despawn after eating
+			if (score > highScore) {
+				highScore = score;
+				SaveHighScore();
+			}
+		}
+	}
+
 }
-
-
 
 int main()
 {
