@@ -33,6 +33,11 @@ int fruitsCollected = 0;
 int x, y, aiX, aiY;
 int fruitX, fruitY, score, aiScore;
 
+//obstacles
+const int numObstacles = 5;
+int obstacleX[numObstacles];
+int obstacleY[numObstacles];
+
 //special fruit variables
 int specialFruitX, specialFruitY;
 int specialFruitTimer = 0;
@@ -44,6 +49,7 @@ int tailX[100], tailY[100], aiTailX[100], aiTailY[100];
 int nTail, aiNTail;
 int aiSpeed = 150;
 
+//power ups
 int powerUpX, powerUpY;
 bool powerUpActive = false;
 int powerUpType = 0;
@@ -65,7 +71,6 @@ int highScore = 0;
 bool gameOver;
 
 bool isPaused = false;  // tracks if the game is currently paused
-
 
 int gameSpeed = 100; // default game speed
 
@@ -237,6 +242,12 @@ void Setup() {
 
 	LoadHighScore();
 
+	//initialize obstacles
+	for (int i = 0; i < numObstacles; i++) {
+		obstacleX[i] = rand() % width;
+		obstacleY[i] = rand() % height;
+	}
+
 	//reset achievement tracking variables
 	survivalTicks = 0;
 	fruitsCollected = 0;
@@ -335,6 +346,19 @@ void Draw() {
 			else if (powerUpActive && i == powerUpY && j == powerUpX)
 				std::cout << "P";  // Power-up symbol
 			else {
+				bool isObstacle = false;
+				for (int k = 0; k < numObstacles; k++) {
+					if (i == obstacleY[k] && j == obstacleX[k]) {
+						std::cout << "X"; //display obstacle
+						isObstacle = true;
+						break;
+					}
+				}
+
+				if (isObstacle) {
+					continue;
+				}
+
 				bool print = false;
 				for (int k = 0; k < nTail; k++) {
 					if (tailX[k] == j && tailY[k] == i) {
@@ -456,6 +480,12 @@ void Logic() {
 		}
 	}
 
+	//check collision with obstacles
+	for (int i = 0; i < numObstacles; i++) {
+		if (x == obstacleX[i] && y == obstacleY[i]) {
+			gameOver = true;
+		}
+	}
 	//check if snake eats the fruit
 	if (x == fruitX && y == fruitY) {
 		score += 10;
