@@ -44,6 +44,15 @@ int tailX[100], tailY[100], aiTailX[100], aiTailY[100];
 int nTail, aiNTail;
 int aiSpeed = 150;
 
+int powerUpX, powerUpY;
+bool powerUpActive = false;
+int powerUpType = 0;
+const int powerUpDuration = 100; //duration for power-up effect
+int powerUpTimer = 0;
+
+//power-up types
+enum PowerUp { NONE, MOVE_THROUGH_WALLS, SLOW_TIME, DOUBLE_SCORE };
+PowerUp currentPowerUp = NONE;
 
 //direction control
 enum eDirection {STOP = 0, LEFT, RIGHT, UP, DOWN};
@@ -323,6 +332,8 @@ void Draw() {
 				std::cout << "F";
 			else if (specialFruitActive && i == specialFruitY && j == specialFruitX)
 				std::cout << "S";  // special fruit 
+			else if (powerUpActive && i == powerUpY && j == powerUpX)
+				std::cout << "P";  // Power-up symbol
 			else {
 				bool print = false;
 				for (int k = 0; k < nTail; k++) {
@@ -460,6 +471,78 @@ void Logic() {
 
 	AILogic();
 
+	// modify behavior based on power-up
+	if (currentPowerUp == MOVE_THROUGH_WALLS) {
+		// allow snake to move through walls
+		if (x >= width) x = 0; else if (x < 0) x = width - 1;
+		if (y >= height) y = 0; else if (y < 0) y = height - 1;
+	}
+	else {
+		// normal wall collision behavior
+		if (x >= width || x < 0 || y >= height || y < 0) {
+			gameOver = true;
+		}
+	}
+
+	// double score if active
+	if (currentPowerUp == DOUBLE_SCORE) {
+		score += 10;  // double the usual score increment
+	}
+	else {
+		score += 5;
+	}
+
+	// spawn power-up with a 2% chance each tick
+	if (!powerUpActive && rand() % 100 < 2) {
+		powerUpX = rand() % width;
+		powerUpY = rand() % height;
+		powerUpActive = true;
+		powerUpType = rand() % 3 + 1;  //random power-up type
+	}
+
+	if (powerUpActive) {
+		if (x == powerUpX && y == powerUpY) {
+			currentPowerUp = static_cast<PowerUp>(powerUpType);
+			powerUpActive = false;
+			powerUpTimer = powerUpDuration;
+
+			switch (currentPowerUp) {
+			case MOVE_THROUGH_WALLS:
+				std::cout << "Power-Up: Move Through Walls Activated!" << std::endl;
+				break;
+			case SLOW_TIME:
+				std::cout << "Power-Up: Slow Time Activated!" << std::endl;
+				gameSpeed *= 2;  //slow down the game speed
+				break;
+			case DOUBLE_SCORE:
+				std::cout << "Power-Up: Double Score Activated!" << std::endl;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	if (powerUpTimer > 0) {
+		powerUpTimer--;
+		if (powerUpTimer == 0) {
+			switch (currentPowerUp) {
+			case MOVE_THROUGH_WALLS:
+				std::cout << "Power-Up: Move Through Walls Deactivated!" << std::endl;
+				break;
+			case SLOW_TIME:
+				std::cout << "Power-Up: Slow Time Deactivated!" << std::endl;
+				gameSpeed /= 2;  //reset the game speed
+				break;
+			case DOUBLE_SCORE:
+				std::cout << "Power-Up: Double Score Deactivated!" << std::endl;
+				break;
+			default:
+				break;
+			}
+			currentPowerUp = NONE;
+		}
+	}
 
 	if (!specialFruitActive && rand() % 100 < 5) {  // 5% chance to spawn special fruit each cycle
 		specialFruitX = rand() % width;
