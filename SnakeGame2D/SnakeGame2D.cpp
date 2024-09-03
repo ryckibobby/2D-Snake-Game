@@ -130,13 +130,13 @@ void ChangeDifficulty() {
 
     switch (difficulty) {
     case 1:
-        gameSpeed = 150;  // Slower speed
+        gameSpeed = 150;  // slower speed
         break;
     case 2:
-        gameSpeed = 100;  // Default speed
+        gameSpeed = 100;  // default speed
         break;
     case 3:
-        gameSpeed = 50;   // Faster speed
+        gameSpeed = 50;   // faster speed
         break;
     default:
         std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
@@ -250,9 +250,10 @@ void Setup() {
         aiNTail = 0;
         aiDir = STOP;
     }
-}
+} 
 
 void AILogic() {
+    // basic AI movement logic towards the fruit
     if (aiX < fruitX) {
         aiDir = RIGHT;
     }
@@ -266,6 +267,7 @@ void AILogic() {
         aiDir = UP;
     }
 
+    // move the tail
     int prevX = aiTailX[0];
     int prevY = aiTailY[0];
     int prev2X, prev2Y;
@@ -280,6 +282,7 @@ void AILogic() {
         prevY = prev2Y;
     }
 
+    // move the AI's head
     switch (aiDir) {
     case LEFT:
         aiX--;
@@ -297,16 +300,36 @@ void AILogic() {
         break;
     }
 
+    // wrap around the screen
     if (aiX >= width) aiX = 0; else if (aiX < 0) aiX = width - 1;
     if (aiY >= height) aiY = 0; else if (aiY < 0) aiY = height - 1;
 
+    // check for collision with walls
+    for (int i = 0; i < numObstacles; i++) {
+        if (aiX == obstacleX[i] && aiY == obstacleY[i]) {
+            gameOver = true;
+            return;
+        }
+    }
+
+    // check if AI eats the fruit
     if (aiX == fruitX && aiY == fruitY) {
         aiScore += 10;
         fruitX = rand() % width;
         fruitY = rand() % height;
         aiNTail++;
+
+        // ensure fruit does not spawn on the AI's tail or obstacles
+        while (std::find(aiTailX, aiTailX + aiNTail, fruitX) != aiTailX + aiNTail ||
+            std::find(aiTailY, aiTailY + aiNTail, fruitY) != aiTailY + aiNTail ||
+            std::find(obstacleX, obstacleX + numObstacles, fruitX) != obstacleX + numObstacles ||
+            std::find(obstacleY, obstacleY + numObstacles, fruitY) != obstacleY + numObstacles) {
+            fruitX = rand() % width;
+            fruitY = rand() % height;
+        }
     }
 
+    // check for collision with AI's own tail
     for (int i = 0; i < aiNTail; i++) {
         if (aiTailX[i] == aiX && aiTailY[i] == aiY) {
             gameOver = true;
@@ -324,30 +347,61 @@ void Draw() {
         for (int j = 0; j < width; j++) {
             if (j == 0)
                 std::cout << "#"; // border
-            if (i == y && j == x)
-                std::cout << "O"; //snake head
-            else if (i == fruitY && j == fruitX)
-                std::cout << "*"; // fruit
-            else {
-                bool print = false;
-                for (int k = 0; k < nTail; k++) {
-                    if (tailX[k] == j && tailY[k] == i) {
-                        std::cout << "o"; // snake tail
-                        print = true;
-                    }
+
+            bool print = false;
+
+            // draw AI's snake
+            if (playAgainstAI) {
+                if (i == aiY && j == aiX) {
+                    std::cout << "A"; // AI's snake head
+                    print = true;
                 }
-                if (!print) {
-                    for (int k = 0; k < numObstacles; k++) {
-                        if (obstacleX[k] == j && obstacleY[k] == i) {
-                            std::cout << "#"; // obstacle
+                else {
+                    for (int k = 0; k < aiNTail; k++) {
+                        if (aiTailX[k] == j && aiTailY[k] == i) {
+                            std::cout << "a"; // AI's snake tail
                             print = true;
                         }
                     }
                 }
-                if (!print) {
-                    std::cout << " ";
+            }
+
+            // draw player's snake
+            if (!print) {
+                if (i == y && j == x) {
+                    std::cout << "O"; // player's snake head
+                    print = true;
+                }
+                else {
+                    for (int k = 0; k < nTail; k++) {
+                        if (tailX[k] == j && tailY[k] == i) {
+                            std::cout << "o"; // player's snake tail
+                            print = true;
+                        }
+                    }
                 }
             }
+
+            // draw obstacles
+            if (!print) {
+                for (int k = 0; k < numObstacles; k++) {
+                    if (i == obstacleY[k] && j == obstacleX[k]) {
+                        std::cout << "#"; // obstacle
+                        print = true;
+                    }
+                }
+            }
+
+            // draw fruit
+            if (!print) {
+                if (i == fruitY && j == fruitX) {
+                    std::cout << "F"; // fruit
+                }
+                else {
+                    std::cout << " "; // empty space
+                }
+            }
+
             if (j == width - 1)
                 std::cout << "#";
         }
@@ -366,6 +420,7 @@ void Draw() {
         std::cout << "AI Score: " << aiScore << std::endl;
     }
 }
+
 
 void Input() {
     if (_kbhit()) {
@@ -396,7 +451,7 @@ void Input() {
             if (!powerUpActive) {
                 powerUpX = rand() % width;
                 powerUpY = rand() % height;
-                currentPowerUp = static_cast<PowerUp>(rand() % 3 + 1); // Random power-up
+                currentPowerUp = static_cast<PowerUp>(rand() % 3 + 1); // random power-up
                 powerUpActive = true;
             }
             break;
@@ -418,6 +473,7 @@ void Logic() {
     if (isPaused)
         return;
 
+    // move the tail
     int prevX = tailX[0];
     int prevY = tailY[0];
     int prev2X, prev2Y;
@@ -432,11 +488,22 @@ void Logic() {
         prevY = prev2Y;
     }
 
+    // check for collision with fruit
     if (x == fruitX && y == fruitY) {
         score += 10;
         nTail++;
         fruitX = rand() % width;
         fruitY = rand() % height;
+
+        // ensure fruit does not spawn on the snake's tail or obstacles
+        while (std::find(tailX, tailX + nTail, fruitX) != tailX + nTail ||
+            std::find(tailY, tailY + nTail, fruitY) != tailY + nTail ||
+            std::find(obstacleX, obstacleX + numObstacles, fruitX) != obstacleX + numObstacles ||
+            std::find(obstacleY, obstacleY + numObstacles, fruitY) != obstacleY + numObstacles) {
+            fruitX = rand() % width;
+            fruitY = rand() % height;
+        }
+
         if (score > highScore) {
             highScore = score;
         }
@@ -492,29 +559,25 @@ void Logic() {
         }
     }
 
-    if (powerUpActive) {
-        powerUpTimer--;
-        if (powerUpTimer <= 0) {
-            powerUpActive = false;
-        }
-    }
-
-    if (playAgainstAI) {
-        AILogic();
-        if (aiX == x && aiY == y) {
-            gameOver = true;
-        }
-    }
-
-    // Check for collision with tail or obstacles
+    // check for collision with tail or obstacles
     for (int i = 0; i < nTail; i++) {
         if (tailX[i] == x && tailY[i] == y) {
+            std::cout << "Game Over: Collision with tail at (" << tailX[i] << ", " << tailY[i] << ")" << std::endl;
             gameOver = true;
         }
     }
 
     for (int i = 0; i < numObstacles; i++) {
         if (obstacleX[i] == x && obstacleY[i] == y) {
+            std::cout << "Game Over: Collision with obstacle at (" << obstacleX[i] << ", " << obstacleY[i] << ")" << std::endl;
+            gameOver = true;
+        }
+    }
+
+    if (playAgainstAI) {
+        AILogic();
+        if (aiX == x && aiY == y) {
+            std::cout << "Game Over: Collision with AI at (" << aiX << ", " << aiY << ")" << std::endl;
             gameOver = true;
         }
     }
