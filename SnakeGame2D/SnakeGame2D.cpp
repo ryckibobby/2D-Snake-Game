@@ -1,700 +1,546 @@
-// SnakeGame2D.cpp 
-
 #include <iostream>
-#include <conio.h>
-#include <windows.h>
 #include <fstream>
+#include <cstdlib>
+#include <conio.h> 
+#include <windows.h> 
 
-
-
-//define game area size
+//define constants
 const int width = 20;
 const int height = 17;
+const int numObstacles = 5;
+const int powerUpDuration = 100;
+const int specialFruitDuration = 50;
 
-//achievements variables
+enum Direction { STOP = 0, LEFT, RIGHT, UP, DOWN };
+enum PowerUp { NONE = 0, MOVE_THROUGH_WALLS, SLOW_TIME, DOUBLE_SCORE };
+
+//global variables
+int highScore = 0;
+bool gameOver;
+bool isPaused = false;
+int gameSpeed = 100; // default game speed
+
+//variables for solo play
+int x, y, fruitX, fruitY, score;
+int nTail;
+int tailX[100], tailY[100];
+int obstacleX[numObstacles], obstacleY[numObstacles];
+bool tilesCovered[width][height] = { false };
+int totalTilesCovered;
+int survivalTicks;
+int fruitsCollected;
+int consecutiveFruits;
 bool scoreHunterUnlocked = false;
 bool survivorUnlocked = false;
 bool fruitCollectorUnlocked = false;
-
 bool speedDemonUnlocked = false;
 bool perfectionistUnlocked = false;
 bool explorerUnlocked = false;
 bool longevityUnlocked = false;
 bool highRollerUnlocked = false;
 
-int consecutiveFruits = 0;  //tracks the number of consecutive fruits collected
-int totalTilesCovered = 0;  //tracks the number of unique tiles covered
-bool tilesCovered[20][20];  //array to track which tiles have been covered
+//variables for AI play
+int aiX, aiY, aiScore, aiNTail;
+int aiTailX[100], aiTailY[100];
+Direction aiDir;
+int aiSpeed;
 
-int survivalTicks = 0;
-int fruitsCollected = 0; 
-
-//variable for snake and food position
-int x, y, aiX, aiY;
-int fruitX, fruitY, score, aiScore;
-
-//obstacles
-const int numObstacles = 5;
-int obstacleX[numObstacles];
-int obstacleY[numObstacles];
-
-//special fruit variables
+//power-up variables
+bool powerUpActive = false;
+int powerUpX, powerUpY;
+PowerUp currentPowerUp = NONE;
+int powerUpTimer = 0;
+PowerUp powerUpType;
+bool specialFruitActive = false;
 int specialFruitX, specialFruitY;
 int specialFruitTimer = 0;
-bool specialFruitActive = false;
-const int specialFruitDuration = 50;
+// int specialFruitDuration = 100;
 
-//track snake and ai snake's tail
-int tailX[100], tailY[100], aiTailX[100], aiTailY[100];
-int nTail, aiNTail;
-int aiSpeed = 150;
+//mode selection
+bool playAgainstAI = false;
 
-//power ups
-int powerUpX, powerUpY;
-bool powerUpActive = false;
-int powerUpType = 0;
-const int powerUpDuration = 100; //duration for power-up effect
-int powerUpTimer = 0;
-
-//power-up types
-enum PowerUp { NONE, MOVE_THROUGH_WALLS, SLOW_TIME, DOUBLE_SCORE };
-PowerUp currentPowerUp = NONE;
-
-//direction control
-enum eDirection {STOP = 0, LEFT, RIGHT, UP, DOWN};
-eDirection dir, aiDir;
-
-//to store high score
-int highScore = 0;
-
-//game over 
-bool gameOver;
-
-bool isPaused = false;  // tracks if the game is currently paused
-
-int gameSpeed = 100; // default game speed
+//function prototypes
+void LoadHighScore();
+void SaveHighScore();
+void SelectAIDifficulty();
+void ChangeDifficulty();
+void ShowHighScores();
+void ShowSettings();
+void ShowMenu();
+void Setup();
+void AILogic();
+void Draw();
+void Input();
+void Logic();
 
 void LoadHighScore() {
-	std::ifstream file("highscore.txt");
-	if (file.is_open()) {
-		file >> highScore;
-	}
-	file.close();
+    std::ifstream file("highscore.txt");
+    if (file.is_open()) {
+        file >> highScore;
+    }
+    file.close();
 }
 
 void SaveHighScore() {
-	std::ofstream file("highscore.txt");
-	if (file.is_open()) {
-		file << highScore;
-	}
-	file.close();
+    std::ofstream file("highscore.txt");
+    if (file.is_open()) {
+        file << highScore;
+    }
+    file.close();
 }
 
 void SelectAIDifficulty() {
-	int difficulty;
-	std::cout << "Select AI Difficulty: " << std::endl;
-	std::cout << "1. Easy" << std::endl;
-	std::cout << "2. Medium" << std::endl;
-	std::cout << "3. Hard" << std::endl;
-	std::cout << "Enter your choice: ";
-	std::cin >> difficulty;
+    int difficulty;
+    std::cout << "Select AI Difficulty: " << std::endl;
+    std::cout << "1. Easy" << std::endl;
+    std::cout << "2. Medium" << std::endl;
+    std::cout << "3. Hard" << std::endl;
+    std::cout << "Enter your choice: ";
+    std::cin >> difficulty;
 
-	switch (difficulty) {
-	case 1:
-		aiSpeed = 150;  //slower AI speed
-		break;
-	case 2:
-		aiSpeed = 100;  //default AI speed
-		break;
-	case 3:
-		aiSpeed = 50;   //faster AI speed
-		break;
-	default:
-		std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
-		aiSpeed = 100;
-		break;
-	}
-	std::cout << "AI Difficulty set!" << std::endl;
-	std::cout << "\nPress any key to return to the menu...";
-	std::cin.ignore();
-	std::cin.get();
+    switch (difficulty) {
+    case 1:
+        aiSpeed = 150;  // slower AI speed
+        break;
+    case 2:
+        aiSpeed = 100;  // default AI speed
+        break;
+    case 3:
+        aiSpeed = 50;   // faster AI speed
+        break;
+    default:
+        std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
+        aiSpeed = 100;
+        break;
+    }
+    std::cout << "AI Difficulty set!" << std::endl;
+    std::cout << "\nPress any key to return to the menu...";
+    std::cin.ignore();
+    std::cin.get();
 }
 
 void ChangeDifficulty() {
-	int difficulty;
-	std::cout << "Select Difficulty: " << std::endl;
-	std::cout << "1. Easy" << std::endl;
-	std::cout << "2. Medium" << std::endl;
-	std::cout << "3. Hard" << std::endl;
-	std::cout << "Enter your choice: ";
-	std::cin >> difficulty;
+    int difficulty;
+    std::cout << "Select Difficulty: " << std::endl;
+    std::cout << "1. Easy" << std::endl;
+    std::cout << "2. Medium" << std::endl;
+    std::cout << "3. Hard" << std::endl;
+    std::cout << "Enter your choice: ";
+    std::cin >> difficulty;
 
-	switch (difficulty) {
-	case 1:
-		gameSpeed = 150;  // Slower speed
-		break;
-	case 2:
-		gameSpeed = 100;  // Default speed
-		break;
-	case 3:
-		gameSpeed = 50;   // Faster speed
-		break;
-	default:
-		std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
-		gameSpeed = 100;
-		break;
-	}
-	std::cout << "Difficulty set!" << std::endl;
-	std::cout << "\nPress any key to return to the menu...";
-	std::cin.ignore();
-	std::cin.get();
+    switch (difficulty) {
+    case 1:
+        gameSpeed = 150;  // Slower speed
+        break;
+    case 2:
+        gameSpeed = 100;  // Default speed
+        break;
+    case 3:
+        gameSpeed = 50;   // Faster speed
+        break;
+    default:
+        std::cout << "Invalid choice! Setting to Medium by default." << std::endl;
+        gameSpeed = 100;
+        break;
+    }
+    std::cout << "Difficulty set!" << std::endl;
+    std::cout << "\nPress any key to return to the menu...";
+    std::cin.ignore();
+    std::cin.get();
 }
 
 void ShowHighScores() {
-	system("cls");
-	std::cout << "=== High Scores ===" << std::endl;
-	std::cout << "1. " << highScore << std::endl;
-	// add more high scores if needed
-	std::cout << "\nPress any key to return to the menu...";
-	std::cin.ignore();
-	std::cin.get();
+    system("cls");
+    std::cout << "=== High Scores ===" << std::endl;
+    std::cout << "1. " << highScore << std::endl;
+    // add more high scores if needed
+    std::cout << "\nPress any key to return to the menu...";
+    std::cin.ignore();
+    std::cin.get();
 }
 
 void ShowSettings() {
-	int settingChoice;
-	do {
-		system("cls");
-		std::cout << "=== Settings ===" << std::endl;
-		std::cout << "1. Change Difficulty" << std::endl;
-		std::cout << "2. Back to Main Menu" << std::endl;
-		std::cout << "Enter your choice: ";
-		std::cin >> settingChoice;
+    int settingChoice;
+    do {
+        system("cls");
+        std::cout << "=== Settings ===" << std::endl;
+        std::cout << "1. Change Difficulty" << std::endl;
+        std::cout << "2. Back to Main Menu" << std::endl;
+        std::cout << "Enter your choice: ";
+        std::cin >> settingChoice;
 
-		switch (settingChoice) {
-		case 1:
-			// change difficulty (e.g., adjust speed)
-			ChangeDifficulty();
-			break;
-		case 2:
-			// return to main menu
-			return;
-		default:
-			std::cout << "Invalid choice! Please select again." << std::endl;
-			break;
-		}
-	} while (settingChoice != 2);
+        switch (settingChoice) {
+        case 1:
+            ChangeDifficulty();
+            break;
+        case 2:
+            return;
+        default:
+            std::cout << "Invalid choice! Please select again." << std::endl;
+            break;
+        }
+    } while (settingChoice != 2);
 }
 
 void ShowMenu() {
-	int choice;
-	do {
-		system("cls");
-		std::cout << "=== Snake Game ===" << std::endl;
-		std::cout << "1. Start Game" << std::endl;
-		std::cout << "2. View High Scores" << std::endl;
-		std::cout << "3. Settings" << std::endl;
-		std::cout << "4. Exit" << std::endl;
-		std::cout << "Enter your choice: ";
-		std::cin >> choice;
+    int choice;
+    do {
+        system("cls");
+        std::cout << "=== Snake Game ===" << std::endl;
+        std::cout << "1. Start Solo Game" << std::endl;
+        std::cout << "2. Play Against AI" << std::endl;
+        std::cout << "3. View High Scores" << std::endl;
+        std::cout << "4. Settings" << std::endl;
+        std::cout << "5. Exit" << std::endl;
+        std::cout << "Enter your choice: ";
+        std::cin >> choice;
 
-		switch (choice) {
-		case 1:
-			//start the game
-			return;
-		case 2:
-			//view high scores
-			ShowHighScores();
-			break;
-		case 3:
-			//adjust settings
-			ShowSettings();
-			break;
-		case 4:
-			//exit the game
-			exit(0);
-		default:
-			std::cout << "Invalid choice! Please select again." << std::endl;
-			break;
-		}
-	} while (choice != 1);
+        switch (choice) {
+        case 1:
+            playAgainstAI = false;
+            return;
+        case 2:
+            playAgainstAI = true;
+            SelectAIDifficulty();
+            return;
+        case 3:
+            ShowHighScores();
+            break;
+        case 4:
+            ShowSettings();
+            break;
+        case 5:
+            exit(0);
+        default:
+            std::cout << "Invalid choice! Please select again." << std::endl;
+            break;
+        }
+    } while (choice != 1 && choice != 2);
 }
-
-
 
 void Setup() {
-	gameOver = false; 
-	dir = STOP;
-	aiDir = STOP;
-	x = width / 2;
-	y = height / 2;
-	aiX = width / 3;
-	aiY = height / 3; 
-	fruitX = rand() % width;
-	fruitY = rand() % height;
-	score = 0;
-	aiScore = 0;
+    gameOver = false;
+    x = width / 2;
+    y = height / 2;
+    fruitX = rand() % width;
+    fruitY = rand() % height;
+    score = 0;
+    nTail = 0;
 
-	nTail = 0;
-	aiNTail = 0;
+    specialFruitTimer = 0;
+    specialFruitActive = false;
 
-	specialFruitTimer = 0;
-	specialFruitActive = false;
+    LoadHighScore();
 
-	LoadHighScore();
+    for (int i = 0; i < numObstacles; i++) {
+        obstacleX[i] = rand() % width;
+        obstacleY[i] = rand() % height;
+    }
 
-	//initialize obstacles
-	for (int i = 0; i < numObstacles; i++) {
-		obstacleX[i] = rand() % width;
-		obstacleY[i] = rand() % height;
-	}
+    survivalTicks = 0;
+    fruitsCollected = 0;
+    consecutiveFruits = 0;
+    totalTilesCovered = 0;
+    memset(tilesCovered, false, sizeof(tilesCovered));
 
-	//reset achievement tracking variables
-	survivalTicks = 0;
-	fruitsCollected = 0;
-	consecutiveFruits = 0;
-	totalTilesCovered = 0;
-	memset(tilesCovered, false, sizeof(tilesCovered));
+    if (playAgainstAI) {
+        aiX = width / 3;
+        aiY = height / 3;
+        aiScore = 0;
+        aiNTail = 0;
+        aiDir = STOP;
+    }
 }
 
-// AI movement logic
 void AILogic() {
-	if (aiX < fruitX) {
-		aiDir = RIGHT;
-	}
-	else if (aiX > fruitX) {
-		aiDir = LEFT;
-	}
-	else if (aiY < fruitY) {
-		aiDir = DOWN;
-	}
-	else if (aiY > fruitY) {
-		aiDir = UP;
-	}
+    if (aiX < fruitX) {
+        aiDir = RIGHT;
+    }
+    else if (aiX > fruitX) {
+        aiDir = LEFT;
+    }
+    else if (aiY < fruitY) {
+        aiDir = DOWN;
+    }
+    else if (aiY > fruitY) {
+        aiDir = UP;
+    }
 
-	//move AI snake
-	int prevX = aiTailX[0];
-	int prevY = aiTailY[0];
-	int prev2X, prev2Y;
-	aiTailX[0] = aiX;
-	aiTailY[0] = aiY;
-	for (int i = 1; i < aiNTail; i++) {
-		prev2X = aiTailX[i];
-		prev2Y = aiTailY[i];
-		aiTailX[i] = prevX;
-		aiTailY[i] = prevY;
-		prevX = prev2X;
-		prevY = prev2Y;
-	}
+    int prevX = aiTailX[0];
+    int prevY = aiTailY[0];
+    int prev2X, prev2Y;
+    aiTailX[0] = aiX;
+    aiTailY[0] = aiY;
+    for (int i = 1; i < aiNTail; i++) {
+        prev2X = aiTailX[i];
+        prev2Y = aiTailY[i];
+        aiTailX[i] = prevX;
+        aiTailY[i] = prevY;
+        prevX = prev2X;
+        prevY = prev2Y;
+    }
 
-	switch (aiDir) {
-	case LEFT:
-		aiX--;
-		break;
-	case RIGHT:
-		aiX++;
-		break;
-	case UP:
-		aiY--;
-		break;
-	case DOWN:
-		aiY++;
-		break;
-	default:
-		break;
-	}
+    switch (aiDir) {
+    case LEFT:
+        aiX--;
+        break;
+    case RIGHT:
+        aiX++;
+        break;
+    case UP:
+        aiY--;
+        break;
+    case DOWN:
+        aiY++;
+        break;
+    default:
+        break;
+    }
 
-	//check if AI hits the wall
-	if (aiX >= width) aiX = 0; else if (aiX < 0) aiX = width - 1;
-	if (aiY >= height) aiY = 0; else if (aiY < 0) aiY = height - 1;
+    if (aiX >= width) aiX = 0; else if (aiX < 0) aiX = width - 1;
+    if (aiY >= height) aiY = 0; else if (aiY < 0) aiY = height - 1;
 
-	//check if AI hits itself
-	for (int i = 0; i < aiNTail; i++) {
-		if (aiTailX[i] == aiX && aiTailY[i] == aiY) {
-			gameOver = true;
-		}
-	}
+    if (aiX == fruitX && aiY == fruitY) {
+        aiScore += 10;
+        fruitX = rand() % width;
+        fruitY = rand() % height;
+        aiNTail++;
+    }
 
-	//check if AI eats the fruit
-	if (aiX == fruitX && aiY == fruitY) {
-		aiScore += 10;
-		fruitX = rand() % width;
-		fruitY = rand() % height;
-		aiNTail++;
-	}
+    for (int i = 0; i < aiNTail; i++) {
+        if (aiTailX[i] == aiX && aiTailY[i] == aiY) {
+            gameOver = true;
+        }
+    }
 }
 
 void Draw() {
-	system("cls");
+    system("cls");
+    for (int i = 0; i < width + 2; i++)
+        std::cout << "#";
+    std::cout << std::endl;
 
-	for (int i = 0; i < width + 2; i++)
-		std::cout << "#";
-	std::cout << std::endl;
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (j == 0)
+                std::cout << "#"; // border
+            if (i == y && j == x)
+                std::cout << "O"; //snake head
+            else if (i == fruitY && j == fruitX)
+                std::cout << "*"; // fruit
+            else {
+                bool print = false;
+                for (int k = 0; k < nTail; k++) {
+                    if (tailX[k] == j && tailY[k] == i) {
+                        std::cout << "o"; // snake tail
+                        print = true;
+                    }
+                }
+                if (!print) {
+                    for (int k = 0; k < numObstacles; k++) {
+                        if (obstacleX[k] == j && obstacleY[k] == i) {
+                            std::cout << "#"; // obstacle
+                            print = true;
+                        }
+                    }
+                }
+                if (!print) {
+                    std::cout << " ";
+                }
+            }
+            if (j == width - 1)
+                std::cout << "#";
+        }
+        std::cout << std::endl;
+    }
 
-	//draw game area
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (j == 0)
-				std::cout << "#"; //left wall
-			if (i == y && j == x)
-				std::cout << "0"; //snake head
-			else if (i == aiY && j == aiX)
-				std::cout << "A"; //AI snake head
-			else if (i == fruitY && j == fruitX)
-				std::cout << "F";
-			else if (specialFruitActive && i == specialFruitY && j == specialFruitX)
-				std::cout << "S";  // special fruit 
-			else if (powerUpActive && i == powerUpY && j == powerUpX)
-				std::cout << "P";  // Power-up symbol
-			else {
-				bool isObstacle = false;
-				for (int k = 0; k < numObstacles; k++) {
-					if (i == obstacleY[k] && j == obstacleX[k]) {
-						std::cout << "X"; //display obstacle
-						isObstacle = true;
-						break;
-					}
-				}
+    for (int i = 0; i < width + 2; i++)
+        std::cout << "#";
+    std::cout << std::endl;
 
-				if (isObstacle) {
-					continue;
-				}
+    std::cout << "Score: " << score << " High Score: " << highScore << std::endl;
+    std::cout << "Power Up: " << (powerUpActive ? (currentPowerUp == MOVE_THROUGH_WALLS ? "Move Through Walls" : (currentPowerUp == SLOW_TIME ? "Slow Time" : "Double Score")) : "None") << std::endl;
+    std::cout << "Special Fruit: " << (specialFruitActive ? "Active" : "Inactive") << std::endl;
 
-				bool print = false;
-				for (int k = 0; k < nTail; k++) {
-					if (tailX[k] == j && tailY[k] == i) {
-						std::cout << "o"; //snake tail
-						print = true;
-					}
-				}
-				for (int k = 0; k < aiNTail; k++) {
-					if (aiTailX[k] == j && aiTailY[k] == i) {
-						std::cout << "a"; //AI snake tail
-						print = true;
-					}
-				}
-				if (!print)
-					std::cout << " ";
-			}
-			if (j == width - 1)
-				std::cout << "#";
-		}
-		std::cout << std::endl;
-	}
-
-	//draw bottom wall
-	for (int i = 0; i < width + 2; i++)
-		std::cout << "#";
-	std::cout << std::endl;
-
-	//display score
-	std::cout << "Score: " << score << std::endl;
-	std::cout << "AI Score: " << aiScore << std::endl;
-	std::cout << "High Score: " << highScore << std::endl;
-
-	if (scoreHunterUnlocked)
-		std::cout << "Achievement: Score Hunter" << std::endl;
-	if (survivorUnlocked)
-		std::cout << "Achievement: Survivor" << std::endl;
-	if (fruitCollectorUnlocked)
-		std::cout << "Achievement: Fruit Collector" << std::endl;
-	if (speedDemonUnlocked)
-		std::cout << "Achievement: Speed Demon" << std::endl;
-	if (perfectionistUnlocked)
-		std::cout << "Achievement: Perfectionist" << std::endl;
-	if (explorerUnlocked)
-		std::cout << "Achievement: Explorer" << std::endl;
-	if (longevityUnlocked)
-		std::cout << "Achievement: Longevity" << std::endl;
-	if (highRollerUnlocked)
-		std::cout << "Achievement: High Roller" << std::endl;
+    if (playAgainstAI) {
+        std::cout << "AI Score: " << aiScore << std::endl;
+    }
 }
 
-//user input
 void Input() {
-	if (_kbhit()) {
-		switch (_getch()) {
-		case 'a' :
-			dir = LEFT;
-			break;
-		case 'd' :
-			dir = RIGHT;
-			break;
-		case 'w' :
-			dir = UP;
-			break;
-		case 's' :
-			dir = DOWN;
-			break;
-		case 'x' :
-			gameOver = true;
-			break;
-		case 'p':
-			isPaused = !isPaused;  // toggle pause state
-			break;
-		}
-	}
+    if (_kbhit()) {
+        switch (_getch()) {
+        case 'a':
+            if (x > 0)
+                x--;
+            break;
+        case 'd':
+            if (x < width - 1)
+                x++;
+            break;
+        case 'w':
+            if (y > 0)
+                y--;
+            break;
+        case 's':
+            if (y < height - 1)
+                y++;
+            break;
+        case 'p':
+            isPaused = !isPaused;
+            break;
+        case 'q':
+            gameOver = true;
+            break;
+        case 't':
+            if (!powerUpActive) {
+                powerUpX = rand() % width;
+                powerUpY = rand() % height;
+                currentPowerUp = static_cast<PowerUp>(rand() % 3 + 1); // Random power-up
+                powerUpActive = true;
+            }
+            break;
+        case 'f':
+            if (!specialFruitActive) {
+                specialFruitX = rand() % width;
+                specialFruitY = rand() % height;
+                specialFruitActive = true;
+                specialFruitTimer = specialFruitDuration;
+            }
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void Logic() {
-	//track previous positions
-	int prevX = tailX[0];
-	int prevY = tailY[0];
-	int prev2X, prev2Y;
-	tailX[0] = x;
-	tailY[0] = y;
-	for (int i = 1; i < nTail; i++) {
-		prev2X = tailX[i];
-		prev2Y = tailY[i];
-		tailX[i] = prevX;
-		tailY[i] = prevY;
-		prevX = prev2X;
-		prevY = prev2Y;
-	}
+    if (isPaused)
+        return;
 
-	//update snake's head position based on the direction
-	switch (dir) {
-		case LEFT:
-			x--;
-			break;
-		case RIGHT:
-			x++;
-			break;
-		case UP:
-			y--;
-			break;
-		case DOWN:
-			y++;
-			break;
-		default:
-			break;
-	}
-	
-	//check if snake hits the wall
-	if (x >= width) x = 0; else if (x < 0) x = width - 1;
-	if (y >= height) y = 0; else if (y < 0) y = height - 1;
+    int prevX = tailX[0];
+    int prevY = tailY[0];
+    int prev2X, prev2Y;
+    tailX[0] = x;
+    tailY[0] = y;
+    for (int i = 1; i < nTail; i++) {
+        prev2X = tailX[i];
+        prev2Y = tailY[i];
+        tailX[i] = prevX;
+        tailY[i] = prevY;
+        prevX = prev2X;
+        prevY = prev2Y;
+    }
 
-	//check if snake hits iself
-	for (int i = 0; i < nTail; i++) {
-		if (tailX[i] == x && tailY[i] == y) {
-			gameOver = true;
-		}
-	}
+    if (x == fruitX && y == fruitY) {
+        score += 10;
+        nTail++;
+        fruitX = rand() % width;
+        fruitY = rand() % height;
+        if (score > highScore) {
+            highScore = score;
+        }
 
-	//check collision with obstacles
-	for (int i = 0; i < numObstacles; i++) {
-		if (x == obstacleX[i] && y == obstacleY[i]) {
-			gameOver = true;
-		}
-	}
-	//check if snake eats the fruit
-	if (x == fruitX && y == fruitY) {
-		score += 10;
-		fruitX = rand() % width;
-		fruitY = rand() % height;
-		nTail++;
+        fruitsCollected++;
+        consecutiveFruits++;
+        survivalTicks++;
+        totalTilesCovered++;
+        tilesCovered[x][y] = true;
 
-		if (score > highScore) {
-			highScore = score;
-			SaveHighScore();
-		}
-	}
+        if (consecutiveFruits % 10 == 0) {
+            if (consecutiveFruits >= 10) {
+                scoreHunterUnlocked = true;
+                std::cout << "Achievement Unlocked: Score Hunter!" << std::endl;
+            }
+        }
 
-	AILogic();
+        if (survivalTicks >= 100) {
+            survivorUnlocked = true;
+            std::cout << "Achievement Unlocked: Survivor!" << std::endl;
+        }
 
-	// modify behavior based on power-up
-	if (currentPowerUp == MOVE_THROUGH_WALLS) {
-		// allow snake to move through walls
-		if (x >= width) x = 0; else if (x < 0) x = width - 1;
-		if (y >= height) y = 0; else if (y < 0) y = height - 1;
-	}
-	else {
-		// normal wall collision behavior
-		if (x >= width || x < 0 || y >= height || y < 0) {
-			gameOver = true;
-		}
-	}
+        if (fruitsCollected >= 20) {
+            fruitCollectorUnlocked = true;
+            std::cout << "Achievement Unlocked: Fruit Collector!" << std::endl;
+        }
 
-	// double score if active
-	if (currentPowerUp == DOUBLE_SCORE) {
-		score += 10;  // double the usual score increment
-	}
-	else {
-		score += 5;
-	}
+        if (score >= 500) {
+            speedDemonUnlocked = true;
+            std::cout << "Achievement Unlocked: Speed Demon!" << std::endl;
+        }
 
-	// spawn power-up with a 2% chance each tick
-	if (!powerUpActive && rand() % 100 < 2) {
-		powerUpX = rand() % width;
-		powerUpY = rand() % height;
-		powerUpActive = true;
-		powerUpType = rand() % 3 + 1;  //random power-up type
-	}
+        if (totalTilesCovered >= 100) {
+            explorerUnlocked = true;
+            std::cout << "Achievement Unlocked: Explorer!" << std::endl;
+        }
 
-	if (powerUpActive) {
-		if (x == powerUpX && y == powerUpY) {
-			currentPowerUp = static_cast<PowerUp>(powerUpType);
-			powerUpActive = false;
-			powerUpTimer = powerUpDuration;
+        if (survivalTicks >= 200) {
+            longevityUnlocked = true;
+            std::cout << "Achievement Unlocked: Longevity!" << std::endl;
+        }
 
-			switch (currentPowerUp) {
-			case MOVE_THROUGH_WALLS:
-				std::cout << "Power-Up: Move Through Walls Activated!" << std::endl;
-				break;
-			case SLOW_TIME:
-				std::cout << "Power-Up: Slow Time Activated!" << std::endl;
-				gameSpeed *= 2;  //slow down the game speed
-				break;
-			case DOUBLE_SCORE:
-				std::cout << "Power-Up: Double Score Activated!" << std::endl;
-				break;
-			default:
-				break;
-			}
-		}
-	}
+        if (score >= 1000) {
+            highRollerUnlocked = true;
+            std::cout << "Achievement Unlocked: High Roller!" << std::endl;
+        }
 
-	if (powerUpTimer > 0) {
-		powerUpTimer--;
-		if (powerUpTimer == 0) {
-			switch (currentPowerUp) {
-			case MOVE_THROUGH_WALLS:
-				std::cout << "Power-Up: Move Through Walls Deactivated!" << std::endl;
-				break;
-			case SLOW_TIME:
-				std::cout << "Power-Up: Slow Time Deactivated!" << std::endl;
-				gameSpeed /= 2;  //reset the game speed
-				break;
-			case DOUBLE_SCORE:
-				std::cout << "Power-Up: Double Score Deactivated!" << std::endl;
-				break;
-			default:
-				break;
-			}
-			currentPowerUp = NONE;
-		}
-	}
+        if (specialFruitActive) {
+            specialFruitTimer--;
+            if (specialFruitTimer <= 0) {
+                specialFruitActive = false;
+            }
+        }
+    }
 
-	if (!specialFruitActive && rand() % 100 < 5) {  // 5% chance to spawn special fruit each cycle
-		specialFruitX = rand() % width;
-		specialFruitY = rand() % height;
-		specialFruitActive = true;
-		specialFruitTimer = specialFruitDuration;
-	}
+    if (powerUpActive) {
+        powerUpTimer--;
+        if (powerUpTimer <= 0) {
+            powerUpActive = false;
+        }
+    }
 
-	if (specialFruitActive) {
-		specialFruitTimer--;  // decrease the timer
-		if (specialFruitTimer <= 0) {
-			specialFruitActive = false;  // despawn the special fruit
-		}
+    if (playAgainstAI) {
+        AILogic();
+        if (aiX == x && aiY == y) {
+            gameOver = true;
+        }
+    }
 
-		if (x == specialFruitX && y == specialFruitY) {
-			score += 30;  // increase score by 30 for special fruit
-			specialFruitActive = false;  // despawn after eating
-			if (score > highScore) {
-				highScore = score;
-				SaveHighScore();
-			}
-		}
-	}
-	survivalTicks++;  // increment survival time
+    // Check for collision with tail or obstacles
+    for (int i = 0; i < nTail; i++) {
+        if (tailX[i] == x && tailY[i] == y) {
+            gameOver = true;
+        }
+    }
 
-	//track tile coverage for explorer achievement
-	if (!tilesCovered[x][y]) {
-		tilesCovered[x][y] = true;
-		totalTilesCovered++;
-	}
-
-	//achievement: Score Hunter
-	if (!scoreHunterUnlocked && score >= 100) {
-		scoreHunterUnlocked = true;
-		std::cout << "Achievement Unlocked: Score Hunter (Reach 100 points)" << std::endl;
-	}
-
-	//achievement: Survivor
-	if (!survivorUnlocked && survivalTicks >= 200) {
-		survivorUnlocked = true;
-		std::cout << "Achievement Unlocked: Survivor (Survive for 200 ticks)" << std::endl;
-	}
-
-	//achievement: High Roller
-	if (!highRollerUnlocked && score >= 200) {
-		highRollerUnlocked = true;
-		std::cout << "Achievement Unlocked: High Roller (Reach 200 points)" << std::endl;
-	}
-
-	//achievement: Longevity
-	if (!longevityUnlocked && survivalTicks >= 500) {
-		longevityUnlocked = true;
-		std::cout << "Achievement Unlocked: Longevity (Survive for 500 ticks)" << std::endl;
-	}
-
-	//achievement: Explorer
-	if (!explorerUnlocked && totalTilesCovered >= width * height) {
-		explorerUnlocked = true;
-		std::cout << "Achievement Unlocked: Explorer (Cover every tile on the board)" << std::endl;
-	}
-
-	if (x == fruitX && y == fruitY) {
-		score += 10;
-		fruitX = rand() % width;
-		fruitY = rand() % height;
-		nTail++;
-		fruitsCollected++;  // increment the number of fruits collected
-
-		//achievement: Fruit Collector
-		if (!fruitCollectorUnlocked && fruitsCollected >= 10) {
-			fruitCollectorUnlocked = true;
-			std::cout << "Achievement Unlocked: Fruit Collector (Collect 10 fruits without dying)" << std::endl;
-		}
-
-		//achievement: Perfectionist
-		if (!perfectionistUnlocked && consecutiveFruits >= 5) {
-			perfectionistUnlocked = true;
-			std::cout << "Achievement Unlocked: Perfectionist (Collect 5 consecutive fruits without missing)" << std::endl;
-		}
-
-		//achievement: Speed Demon
-		if (!speedDemonUnlocked && nTail >= 15 && survivalTicks >= 100) {
-			speedDemonUnlocked = true;
-			std::cout << "Achievement Unlocked: Speed Demon (Survive for 100 ticks with a length of 15 or more)" << std::endl;
-		}
-
-		if (score > highScore) {
-			highScore = score;
-			SaveHighScore();
-		}
-	}
-	else {
-		consecutiveFruits = 0;  //reset the consecutive fruit counter if a fruit is missed
-	}
+    for (int i = 0; i < numObstacles; i++) {
+        if (obstacleX[i] == x && obstacleY[i] == y) {
+            gameOver = true;
+        }
+    }
 }
 
-int main()
-{
-	SelectAIDifficulty();
-	while (true) {
-		ShowMenu();  // display the menu and handle selection
+int main() {
+    ShowMenu();
+    Setup();
 
-		Setup();
-		while (!gameOver) {
-			if (!isPaused) {
-				Draw();
-				Input();
-				Logic();
-				AILogic();
-				Sleep(gameSpeed);  // Adjust speed based on difficulty
-			}
-			else {
-				std::cout << "Game Paused. Press 'P' to resume..." << std::endl;
-				Input();  // still listen for the 'P' key to unpause
-				Sleep(100);  // reduce CPU usage while paused
-			}
-			Sleep(gameSpeed);  // adjust speed based on difficulty
-		}
-		std::cout << "Game Over! Press any key to return to the main menu...";
-		std::cin.ignore();
-		std::cin.get();
-	}
-	return 0;
+    while (!gameOver) {
+        Draw();
+        Input();
+        Logic();
+        if (playAgainstAI) {
+            Sleep(aiSpeed);
+        }
+        else {
+            Sleep(gameSpeed);
+        }
+    }
+
+    SaveHighScore();
+    std::cout << "Game Over!" << std::endl;
+    std::cout << "Final Score: " << score << std::endl;
+    std::cout << "Press any key to exit...";
+    std::cin.ignore();
+    std::cin.get();
+    return 0;
 }
-
