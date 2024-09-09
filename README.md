@@ -58,11 +58,12 @@ Instructions
  - Navigate to the project directory:
  - Compile the game:
  - Run the game:
+   
 # Future Enhancements
  - Multiplayer mode: Allow two players to compete on the same board.
  - Additional power-ups: Introduce new power-ups for more diverse gameplay.
  - Custom levels: Allow players to design and play custom levels with different layouts and obstacles.
  - Difficulty settings: Add options to control the game's difficulty (easy, medium, hard).
- - 
+   
 # Credits
 Developed by Rycki Harding.
