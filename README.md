@@ -1,5 +1,4 @@
 # Snake Game 
-
 # Table of Contents
 - Introduction
 - Features
